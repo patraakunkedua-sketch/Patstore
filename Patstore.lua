@@ -2,6 +2,268 @@
 --   PatStore - AUTO MARSHMALLOW v9
 -- ======================================================
 
+-- ============================================================
+-- KEY SYSTEM
+-- ============================================================
+local Players      = game:GetService("Players")
+local TweenSvc     = game:GetService("TweenService")
+local UISvc        = game:GetService("UserInputService")
+
+local _player  = Players.LocalPlayer
+local _pGui    = _player:WaitForChild("PlayerGui")
+
+-- URL raw GitHub key list (ganti dengan URL milikmu)
+local KEY_URL = "https://raw.githubusercontent.com/patraakunkedua-sketch/PatstoreV2/main/keys_hashed.json"
+
+-- Buat Key GUI
+local keySg = Instance.new("ScreenGui")
+keySg.Name = "PatStoreKey"
+keySg.ResetOnSpawn = false
+keySg.IgnoreGuiInset = true
+keySg.DisplayOrder = 9999
+pcall(function() keySg.Parent = game.CoreGui end)
+if keySg.Parent ~= game.CoreGui then keySg.Parent = _pGui end
+
+local keyPanel = Instance.new("Frame", keySg)
+keyPanel.Size = UDim2.new(0, 380, 0, 260)
+keyPanel.Position = UDim2.new(0.5, -190, 0.5, -130)
+keyPanel.BackgroundColor3 = Color3.fromRGB(14,14,20)
+keyPanel.BorderSizePixel = 0
+Instance.new("UICorner", keyPanel).CornerRadius = UDim.new(0, 12)
+local ks = Instance.new("UIStroke", keyPanel)
+ks.Color = Color3.fromRGB(82,130,255) ks.Thickness = 1.5
+
+-- Gradient top
+local kAcc = Instance.new("Frame", keyPanel)
+kAcc.Size = UDim2.new(1, 0, 0, 3)
+kAcc.BackgroundColor3 = Color3.fromRGB(82,130,255)
+kAcc.BorderSizePixel = 0
+Instance.new("UICorner", kAcc).CornerRadius = UDim.new(0, 12)
+local kG = Instance.new("UIGradient", kAcc)
+kG.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(82,130,255)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(148,80,255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(50,210,230))
+}
+
+-- Title
+local kTitle = Instance.new("TextLabel", keyPanel)
+kTitle.Size = UDim2.new(1, 0, 0, 36)
+kTitle.Position = UDim2.new(0, 0, 0, 10)
+kTitle.BackgroundTransparency = 1
+kTitle.Text = "⭐ PatStore"
+kTitle.TextColor3 = Color3.fromRGB(230,232,240)
+kTitle.Font = Enum.Font.GothamBold
+kTitle.TextSize = 18
+kTitle.TextScaled = false
+
+local kSub = Instance.new("TextLabel", keyPanel)
+kSub.Size = UDim2.new(1, -40, 0, 20)
+kSub.Position = UDim2.new(0, 20, 0, 50)
+kSub.BackgroundTransparency = 1
+kSub.Text = "Masukkan key untuk melanjutkan"
+kSub.TextColor3 = Color3.fromRGB(148,154,175)
+kSub.Font = Enum.Font.Gotham
+kSub.TextSize = 11
+kSub.TextScaled = false
+kSub.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Input box
+local kInputBg = Instance.new("Frame", keyPanel)
+kInputBg.Size = UDim2.new(1, -40, 0, 40)
+kInputBg.Position = UDim2.new(0, 20, 0, 80)
+kInputBg.BackgroundColor3 = Color3.fromRGB(22,22,30)
+kInputBg.BorderSizePixel = 0
+Instance.new("UICorner", kInputBg).CornerRadius = UDim.new(0, 8)
+local kIStroke = Instance.new("UIStroke", kInputBg)
+kIStroke.Color = Color3.fromRGB(32,32,44) kIStroke.Thickness = 1
+
+local kInput = Instance.new("TextBox", kInputBg)
+kInput.Size = UDim2.new(1, -16, 1, 0)
+kInput.Position = UDim2.new(0, 8, 0, 0)
+kInput.BackgroundTransparency = 1
+kInput.Text = ""
+kInput.PlaceholderText = "Ketik key disini..."
+kInput.PlaceholderColor3 = Color3.fromRGB(60,64,84)
+kInput.TextColor3 = Color3.fromRGB(230,232,240)
+kInput.Font = Enum.Font.Gotham
+kInput.TextSize = 12
+kInput.TextScaled = false
+kInput.ClearTextOnFocus = false
+kInput.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Focus = highlight border
+kInput.Focused:Connect(function()
+    TweenSvc:Create(kIStroke, TweenInfo.new(0.15), {Color=Color3.fromRGB(82,130,255)}):Play()
+end)
+kInput.FocusLost:Connect(function()
+    TweenSvc:Create(kIStroke, TweenInfo.new(0.15), {Color=Color3.fromRGB(32,32,44)}):Play()
+end)
+
+-- Status label
+local kStatus = Instance.new("TextLabel", keyPanel)
+kStatus.Size = UDim2.new(1, -40, 0, 18)
+kStatus.Position = UDim2.new(0, 20, 0, 128)
+kStatus.BackgroundTransparency = 1
+kStatus.Text = ""
+kStatus.TextColor3 = Color3.fromRGB(148,154,175)
+kStatus.Font = Enum.Font.Gotham
+kStatus.TextSize = 10
+kStatus.TextScaled = false
+kStatus.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Submit button
+local kBtnBg = Instance.new("Frame", keyPanel)
+kBtnBg.Size = UDim2.new(1, -40, 0, 42)
+kBtnBg.Position = UDim2.new(0, 20, 0, 154)
+kBtnBg.BackgroundColor3 = Color3.fromRGB(48,88,200)
+kBtnBg.BorderSizePixel = 0
+Instance.new("UICorner", kBtnBg).CornerRadius = UDim.new(0, 8)
+local kBtnShine = Instance.new("Frame", kBtnBg)
+kBtnShine.Size = UDim2.new(1, 0, 0.5, 0)
+kBtnShine.BackgroundColor3 = Color3.fromRGB(255,255,255)
+kBtnShine.BackgroundTransparency = 0.92
+kBtnShine.BorderSizePixel = 0
+Instance.new("UICorner", kBtnShine).CornerRadius = UDim.new(0, 8)
+local kBtn = Instance.new("TextButton", kBtnBg)
+kBtn.Size = UDim2.new(1, 0, 1, 0)
+kBtn.BackgroundTransparency = 1
+kBtn.Text = "✓  Submit Key"
+kBtn.TextColor3 = Color3.fromRGB(230,232,240)
+kBtn.Font = Enum.Font.GothamBold
+kBtn.TextSize = 13
+kBtn.TextScaled = false
+
+-- Note
+local kNote = Instance.new("TextLabel", keyPanel)
+kNote.Size = UDim2.new(1, -40, 0, 16)
+kNote.Position = UDim2.new(0, 20, 0, 206)
+kNote.BackgroundTransparency = 1
+kNote.Text = "Key dibuat oleh PatraStarboy"
+kNote.TextColor3 = Color3.fromRGB(60,64,84)
+kNote.Font = Enum.Font.Gotham
+kNote.TextSize = 9
+kNote.TextScaled = false
+
+-- Hover effect
+kBtn.MouseEnter:Connect(function()
+    TweenSvc:Create(kBtnBg, TweenInfo.new(0.1), {BackgroundColor3=Color3.fromRGB(62,110,230)}):Play()
+end)
+kBtn.MouseLeave:Connect(function()
+    TweenSvc:Create(kBtnBg, TweenInfo.new(0.1), {BackgroundColor3=Color3.fromRGB(48,88,200)}):Play()
+end)
+kBtn.TouchTap:Connect(function()
+    TweenSvc:Create(kBtnBg, TweenInfo.new(0.05), {BackgroundColor3=Color3.fromRGB(62,110,230)}):Play()
+    task.delay(0.15, function()
+        TweenSvc:Create(kBtnBg, TweenInfo.new(0.1), {BackgroundColor3=Color3.fromRGB(48,88,200)}):Play()
+    end)
+end)
+
+-- Drag key panel
+do
+    local kDrag=false local kDS=nil local kSP=nil
+    keyPanel.InputBegan:Connect(function(i)
+        if i.UserInputType==Enum.UserInputType.MouseButton1 then
+            kDrag=true kDS=i.Position kSP=keyPanel.Position
+            i.Changed:Connect(function() if i.UserInputState==Enum.UserInputState.End then kDrag=false end end)
+        end
+    end)
+    UISvc.InputChanged:Connect(function(i)
+        if kDrag and i.UserInputType==Enum.UserInputType.MouseMovement then
+            local d=i.Position-kDS
+            keyPanel.Position=UDim2.new(kSP.X.Scale,kSP.X.Offset+d.X,kSP.Y.Scale,kSP.Y.Offset+d.Y)
+        end
+    end)
+    UISvc.TouchStarted:Connect(function(t,gp)
+        if gp then return end
+        local kp=keyPanel.AbsolutePosition local ks2=keyPanel.AbsoluteSize
+        local tp=t.Position
+        if tp.X>=kp.X and tp.X<=kp.X+ks2.X and tp.Y>=kp.Y and tp.Y<=kp.Y+ks2.Y then
+            kDrag=true kDS=tp kSP=keyPanel.Position
+        end
+    end)
+    UISvc.TouchMoved:Connect(function(t,gp)
+        if gp or not kDrag then return end
+        local d=t.Position-kDS
+        keyPanel.Position=UDim2.new(kSP.X.Scale,kSP.X.Offset+d.X,kSP.Y.Scale,kSP.Y.Offset+d.Y)
+    end)
+    UISvc.TouchEnded:Connect(function() kDrag=false end)
+end
+
+-- Fungsi validasi key
+local keyValid = false
+
+-- djb2 hash (sama persis dengan keygen.py)
+local function hashKey(s)
+    s = s:upper():gsub("%s",""):gsub("-","")
+    local h = 5381
+    for i = 1, #s do
+        h = ((h * 33) ~ string.byte(s,i)) % 0x100000000
+    end
+    return string.format("%08X", h)
+end
+
+local function checkKey(inputKey)
+    inputKey = inputKey:upper():gsub("%s","")
+    if inputKey == "" then
+        kStatus.Text = "⚠️ Key tidak boleh kosong!"
+        kStatus.TextColor3 = Color3.fromRGB(255,155,35)
+        return
+    end
+    kStatus.Text = "🔄 Mengecek key..."
+    kStatus.TextColor3 = Color3.fromRGB(148,154,175)
+    kBtn.Text = "Mengecek..."
+    task.spawn(function()
+        local ok, result = pcall(function()
+            return game:HttpGet(KEY_URL, true)
+        end)
+        if not ok or not result then
+            kStatus.Text = "❌ Gagal fetch. Coba lagi."
+            kStatus.TextColor3 = Color3.fromRGB(215,50,50)
+            kBtn.Text = "✓  Submit Key"
+            return
+        end
+        -- Hash key input lalu cari di list hash
+        local inputHash = hashKey(inputKey)
+        local found = result:find('"'..inputHash..'"') ~= nil
+        if found then
+            kStatus.Text = "✅ Key valid! Memuat script..."
+            kStatus.TextColor3 = Color3.fromRGB(52,210,110)
+            kBtn.Text = "✓  Valid!"
+            TweenSvc:Create(kBtnBg, TweenInfo.new(0.2), {BackgroundColor3=Color3.fromRGB(30,140,70)}):Play()
+            task.wait(0.8)
+            TweenSvc:Create(keySg, TweenInfo.new(0.3), {BackgroundTransparency=1}):Play()
+            TweenSvc:Create(keyPanel, TweenInfo.new(0.3), {
+                Position=UDim2.new(0.5,-190,0.6,-130),
+                BackgroundTransparency=1
+            }):Play()
+            task.wait(0.35)
+            keySg:Destroy()
+            keyValid = true
+        else
+            kStatus.Text = "❌ Key salah atau tidak valid!"
+            kStatus.TextColor3 = Color3.fromRGB(215,50,50)
+            kBtn.Text = "✓  Submit Key"
+            TweenSvc:Create(kBtnBg, TweenInfo.new(0.1), {BackgroundColor3=Color3.fromRGB(140,30,30)}):Play()
+            task.delay(0.5, function()
+                TweenSvc:Create(kBtnBg, TweenInfo.new(0.2), {BackgroundColor3=Color3.fromRGB(48,88,200)}):Play()
+            end)
+        end
+    end)
+end
+
+kBtn.MouseButton1Click:Connect(function() checkKey(kInput.Text) end)
+kInput.FocusLost:Connect(function(enterPressed)
+    if enterPressed then checkKey(kInput.Text) end
+end)
+
+-- Tunggu sampai key valid sebelum load script utama
+repeat task.wait(0.1) until keyValid
+
+-- ============================================================
+-- MAIN SCRIPT (load setelah key valid)
+-- ============================================================
+
 local Players      = game:GetService("Players")
 local RunService   = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -463,7 +725,6 @@ local sVals={}
 local jualBusy
 local jualStatL,beliStatL,fullyStatL
 local blinkEnabled=false
-local noclipOn=false
 local guiHidden=false
 local showBtn
 
@@ -522,8 +783,14 @@ local function actionBtn(p,y,txt,bg,txtC)
 	return w,b
 end
 local function hoverBtn(w,b,nc,hc)
+	-- Mouse
 	b.MouseEnter:Connect(function() TweenService:Create(w,TweenInfo.new(0.1),{BackgroundColor3=hc}):Play() end)
 	b.MouseLeave:Connect(function() TweenService:Create(w,TweenInfo.new(0.1),{BackgroundColor3=nc}):Play() end)
+	-- Touch: flash on tap
+	b.TouchTap:Connect(function()
+		TweenService:Create(w,TweenInfo.new(0.05),{BackgroundColor3=hc}):Play()
+		task.delay(0.15,function() TweenService:Create(w,TweenInfo.new(0.1),{BackgroundColor3=nc}):Play() end)
+	end)
 end
 local function mkToggle(parent,y,lbl,defaultOn,accentCol)
 	local row=F(parent,C.card,3) row.Size=UDim2.new(1,-24,0,34) row.Position=UDim2.new(0,12,0,y) corner(row,8)
@@ -545,24 +812,54 @@ local function sliderRow(p,y,lbl,minV,maxV,defV,unit)
 	local row=F(p,C.card,2) row.Size=UDim2.new(1,-24,0,48) row.Position=UDim2.new(0,12,0,y) corner(row,8)
 	local nm=T(row,lbl,C.txtM,Enum.Font.Gotham,Enum.TextXAlignment.Left,3,10) nm.Size=UDim2.new(0.6,0,0,20) nm.Position=UDim2.new(0,10,0,2)
 	local valL=T(row,tostring(defV)..(unit or ""),C.txt,Enum.Font.GothamBold,Enum.TextXAlignment.Right,3,11) valL.Size=UDim2.new(0.4,-10,0,20) valL.Position=UDim2.new(0.6,0,0,2)
-	local track=F(row,C.line,3) track.Size=UDim2.new(1,-20,0,4) track.Position=UDim2.new(0,10,0,30) corner(track,2)
-	local fill=F(track,C.blue,4) fill.Size=UDim2.new((defV-minV)/(maxV-minV),0,1,0) corner(fill,2)
+	local track=F(row,C.line,3) track.Size=UDim2.new(1,-20,0,8) track.Position=UDim2.new(0,10,0,28) corner(track,4)
+	local fill=F(track,C.blue,4) fill.Size=UDim2.new((defV-minV)/(maxV-minV),0,1,0) corner(fill,4)
 	local curVal=defV
-	local function setVal(v)
-		v=math.clamp(math.floor(v),minV,maxV) curVal=v
-		fill.Size=UDim2.new((v-minV)/(maxV-minV),0,1,0) valL.Text=tostring(v)..(unit or "")
+	local slDrag=false
+	local function setVal(xPos)
+		local rel=(xPos-track.AbsolutePosition.X)/track.AbsoluteSize.X
+		local v=math.clamp(math.floor(minV+rel*(maxV-minV)),minV,maxV)
+		curVal=v
+		fill.Size=UDim2.new((v-minV)/(maxV-minV),0,1,0)
+		valL.Text=tostring(v)..(unit or "")
 	end
-	local dragging=false
+	local function inTrack(xPos)
+		local ap=track.AbsolutePosition
+		local as=track.AbsoluteSize
+		return xPos>=ap.X-20 and xPos<=ap.X+as.X+20
+	end
+	-- Mouse
 	track.InputBegan:Connect(function(i)
 		if i.UserInputType==Enum.UserInputType.MouseButton1 then
-			dragging=true setVal(minV+(i.Position.X-track.AbsolutePosition.X)/track.AbsoluteSize.X*(maxV-minV))
+			slDrag=true setVal(i.Position.X)
 		end
 	end)
-	track.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then dragging=false end end)
+	track.InputEnded:Connect(function(i)
+		if i.UserInputType==Enum.UserInputType.MouseButton1 then slDrag=false end
+	end)
 	UIS.InputChanged:Connect(function(i)
-		if dragging and i.UserInputType==Enum.UserInputType.MouseMovement then
-			setVal(minV+(i.Position.X-track.AbsolutePosition.X)/track.AbsoluteSize.X*(maxV-minV))
+		if slDrag and i.UserInputType==Enum.UserInputType.MouseMovement then
+			setVal(i.Position.X)
 		end
+	end)
+	-- Touch: pakai UIS global, cek posisi sentuhan ada di area track
+	UIS.TouchStarted:Connect(function(t,gp)
+		if gp then return end
+		local tp=t.Position
+		local ap=track.AbsolutePosition as=track.AbsoluteSize
+		local ar=row.AbsolutePosition
+		-- Cek sentuhan di area row (lebih mudah kena di HP)
+		if tp.X>=ar.X and tp.X<=ar.X+row.AbsoluteSize.X
+			and tp.Y>=ar.Y+16 and tp.Y<=ar.Y+row.AbsoluteSize.Y then
+			slDrag=true setVal(tp.X)
+		end
+	end)
+	UIS.TouchMoved:Connect(function(t,gp)
+		if gp or not slDrag then return end
+		setVal(t.Position.X)
+	end)
+	UIS.TouchEnded:Connect(function(_,gp)
+		if not gp then slDrag=false end
 	end)
 	return function() return curVal end
 end
@@ -892,26 +1189,9 @@ UIS.InputBegan:Connect(function(i,gp)
 	end
 end)
 -- Noclip
-RunService.Stepped:Connect(function()
-	if not noclipOn then return end
-	local char=player.Character if not char then return end
-	for _,p in ipairs(char:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide=false end end
-end)
-local noclipRow=F(teleportPage,C.card,3) noclipRow.Size=UDim2.new(1,-24,0,34) noclipRow.Position=UDim2.new(0,12,0,124) corner(noclipRow,8)
-T(noclipRow,"🚶 Noclip",C.txt,Enum.Font.Gotham,Enum.TextXAlignment.Left,4,11).Size=UDim2.new(0.7,0,1,0)
-local noclipKnobBg=F(noclipRow,C.line,4) noclipKnobBg.Size=UDim2.new(0,34,0,18) noclipKnobBg.Position=UDim2.new(1,-44,0.5,-9) corner(noclipKnobBg,9)
-local noclipKnob=F(noclipKnobBg,C.txt,5) noclipKnob.Size=UDim2.new(0,14,0,14) noclipKnob.Position=UDim2.new(0,2,0.5,-7) corner(noclipKnob,7)
-local noclipBtn=B(noclipRow,"",C.txt,Enum.Font.Gotham,5) noclipBtn.Size=UDim2.new(1,0,1,0)
-noclipBtn.MouseButton1Click:Connect(function()
-	noclipOn=not noclipOn
-	TweenService:Create(noclipKnobBg,TweenInfo.new(0.15),{BackgroundColor3=noclipOn and C.purple or C.line}):Play()
-	TweenService:Create(noclipKnob,TweenInfo.new(0.15),{Position=noclipOn and UDim2.new(1,-16,0.5,-7) or UDim2.new(0,2,0.5,-7)}):Play()
-	if not noclipOn then
-		local char=player.Character
-		if char then for _,p in ipairs(char:GetDescendants()) do if p:IsA("BasePart") then pcall(function() p.CanCollide=true end) end end end
-	end
-end)
-line(teleportPage,164) secHdr(teleportPage,170,"LOKASI")
+
+
+line(teleportPage,124) secHdr(teleportPage,130,"LOKASI")
 local LOCATIONS={
 	{name="🏪 Dealer NPC",     pos=Vector3.new( 770.992, 3.71,  433.75)},
 	{name="🍬 NPC Marshmallow", pos=Vector3.new( 510.061, 4.476, 600.548)},
@@ -924,7 +1204,7 @@ local LOCATIONS={
 	{name="🎰 Casino",         pos=Vector3.new(1166.33,  3.36,  -29.77)},
 }
 local scroll=Instance.new("ScrollingFrame")
-scroll.Size=UDim2.new(1,0,1,-190) scroll.Position=UDim2.new(0,0,0,190)
+scroll.Size=UDim2.new(1,0,1,-150) scroll.Position=UDim2.new(0,0,0,150)
 scroll.BackgroundTransparency=1 scroll.BorderSizePixel=0 scroll.ScrollBarThickness=3 scroll.Parent=teleportPage
 local lo=Instance.new("UIListLayout",scroll) lo.Padding=UDim.new(0,5) lo.SortOrder=Enum.SortOrder.LayoutOrder
 local loPad=Instance.new("UIPadding",scroll) loPad.PaddingLeft=UDim.new(0,12) loPad.PaddingRight=UDim.new(0,12) loPad.PaddingTop=UDim.new(0,4)
