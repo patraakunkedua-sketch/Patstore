@@ -13,7 +13,7 @@ local _player  = Players.LocalPlayer
 local _pGui    = _player:WaitForChild("PlayerGui")
 
 -- URL raw GitHub key list (ganti dengan URL milikmu)
-local KEY_URL = "https://raw.githubusercontent.com/patraakunkedua-sketch/PatstoreV2/main/keys_hashed.json"
+local KEY_URL = "https://raw.githubusercontent.com/patraakunkedua-sketch/Patstore/main/keys_hashed.json"
 
 -- Buat Key GUI
 local keySg = Instance.new("ScreenGui")
