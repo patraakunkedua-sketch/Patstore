@@ -1,6 +1,6 @@
 --// SETTINGS
 local KEY_URL = "https://raw.githubusercontent.com/patraakunkedua-sketch/Patstore/main/keys.txt?t="..tick()
-local SCRIPT_URL = "https://raw.githubusercontent.com/patraakunkedua-sketch/Patstore/main/Patstore.lua"
+local SCRIPT_URL = "https://raw.githubusercontent.com/patraakunkedua-sketch/Patstore/main/PatstoreMS.lua"
 
 --// SERVICES
 local Players = game:GetService("Players")
