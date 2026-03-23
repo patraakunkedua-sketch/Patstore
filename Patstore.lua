@@ -264,15 +264,15 @@ repeat task.wait(0.1) until keyValid
 -- MAIN SCRIPT (load setelah key valid)
 -- ============================================================
 
-local Players      = game:GetService("Players")
+-- Services (Players & TweenSvc sudah ada dari key system, alias saja)
 local RunService   = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
+local TweenService = TweenSvc  -- alias dari key system
 local VIM          = game:GetService("VirtualInputManager")
-local UIS          = game:GetService("UserInputService")
+local UIS          = UISvc      -- alias dari key system
 local RS           = game:GetService("ReplicatedStorage")
 
-local player    = Players.LocalPlayer
-local playerGui = player.PlayerGui
+local player    = _player   -- alias dari key system
+local playerGui = _pGui     -- alias dari key system
 local character = player.Character or player.CharacterAdded:Wait()
 local hrp       = character:WaitForChild("HumanoidRootPart")
 
