@@ -2,263 +2,12 @@
 --   PatStore - AUTO MARSHMALLOW v9
 -- ======================================================
 
--- ============================================================
--- KEY SYSTEM
--- ============================================================
+-- Services shared (di luar do block agar bisa diakses main script)
 local Players      = game:GetService("Players")
 local TweenSvc     = game:GetService("TweenService")
 local UISvc        = game:GetService("UserInputService")
-
-local _player  = Players.LocalPlayer
-local _pGui    = _player:WaitForChild("PlayerGui")
-
--- URL raw GitHub key list (ganti dengan URL milikmu)
-local KEY_URL = "https://raw.githubusercontent.com/patraakunkedua-sketch/Patstore/main/keys_hashed.json"
-
--- Buat Key GUI
-local keySg = Instance.new("ScreenGui")
-keySg.Name = "PatStoreKey"
-keySg.ResetOnSpawn = false
-keySg.IgnoreGuiInset = true
-keySg.DisplayOrder = 9999
-pcall(function() keySg.Parent = game.CoreGui end)
-if keySg.Parent ~= game.CoreGui then keySg.Parent = _pGui end
-
-local keyPanel = Instance.new("Frame", keySg)
-keyPanel.Size = UDim2.new(0, 380, 0, 260)
-keyPanel.Position = UDim2.new(0.5, -190, 0.5, -130)
-keyPanel.BackgroundColor3 = Color3.fromRGB(14,14,20)
-keyPanel.BorderSizePixel = 0
-Instance.new("UICorner", keyPanel).CornerRadius = UDim.new(0, 12)
-local ks = Instance.new("UIStroke", keyPanel)
-ks.Color = Color3.fromRGB(82,130,255) ks.Thickness = 1.5
-
--- Gradient top
-local kAcc = Instance.new("Frame", keyPanel)
-kAcc.Size = UDim2.new(1, 0, 0, 3)
-kAcc.BackgroundColor3 = Color3.fromRGB(82,130,255)
-kAcc.BorderSizePixel = 0
-Instance.new("UICorner", kAcc).CornerRadius = UDim.new(0, 12)
-local kG = Instance.new("UIGradient", kAcc)
-kG.Color = ColorSequence.new{
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(82,130,255)),
-    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(148,80,255)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(50,210,230))
-}
-
--- Title
-local kTitle = Instance.new("TextLabel", keyPanel)
-kTitle.Size = UDim2.new(1, 0, 0, 36)
-kTitle.Position = UDim2.new(0, 0, 0, 10)
-kTitle.BackgroundTransparency = 1
-kTitle.Text = "⭐ PatStore"
-kTitle.TextColor3 = Color3.fromRGB(230,232,240)
-kTitle.Font = Enum.Font.GothamBold
-kTitle.TextSize = 18
-kTitle.TextScaled = false
-
-local kSub = Instance.new("TextLabel", keyPanel)
-kSub.Size = UDim2.new(1, -40, 0, 20)
-kSub.Position = UDim2.new(0, 20, 0, 50)
-kSub.BackgroundTransparency = 1
-kSub.Text = "Masukkan key untuk melanjutkan"
-kSub.TextColor3 = Color3.fromRGB(148,154,175)
-kSub.Font = Enum.Font.Gotham
-kSub.TextSize = 11
-kSub.TextScaled = false
-kSub.TextXAlignment = Enum.TextXAlignment.Left
-
--- Input box
-local kInputBg = Instance.new("Frame", keyPanel)
-kInputBg.Size = UDim2.new(1, -40, 0, 40)
-kInputBg.Position = UDim2.new(0, 20, 0, 80)
-kInputBg.BackgroundColor3 = Color3.fromRGB(22,22,30)
-kInputBg.BorderSizePixel = 0
-Instance.new("UICorner", kInputBg).CornerRadius = UDim.new(0, 8)
-local kIStroke = Instance.new("UIStroke", kInputBg)
-kIStroke.Color = Color3.fromRGB(32,32,44) kIStroke.Thickness = 1
-
-local kInput = Instance.new("TextBox", kInputBg)
-kInput.Size = UDim2.new(1, -16, 1, 0)
-kInput.Position = UDim2.new(0, 8, 0, 0)
-kInput.BackgroundTransparency = 1
-kInput.Text = ""
-kInput.PlaceholderText = "Ketik key disini..."
-kInput.PlaceholderColor3 = Color3.fromRGB(60,64,84)
-kInput.TextColor3 = Color3.fromRGB(230,232,240)
-kInput.Font = Enum.Font.Gotham
-kInput.TextSize = 12
-kInput.TextScaled = false
-kInput.ClearTextOnFocus = false
-kInput.TextXAlignment = Enum.TextXAlignment.Left
-
--- Focus = highlight border
-kInput.Focused:Connect(function()
-    TweenSvc:Create(kIStroke, TweenInfo.new(0.15), {Color=Color3.fromRGB(82,130,255)}):Play()
-end)
-kInput.FocusLost:Connect(function()
-    TweenSvc:Create(kIStroke, TweenInfo.new(0.15), {Color=Color3.fromRGB(32,32,44)}):Play()
-end)
-
--- Status label
-local kStatus = Instance.new("TextLabel", keyPanel)
-kStatus.Size = UDim2.new(1, -40, 0, 18)
-kStatus.Position = UDim2.new(0, 20, 0, 128)
-kStatus.BackgroundTransparency = 1
-kStatus.Text = ""
-kStatus.TextColor3 = Color3.fromRGB(148,154,175)
-kStatus.Font = Enum.Font.Gotham
-kStatus.TextSize = 10
-kStatus.TextScaled = false
-kStatus.TextXAlignment = Enum.TextXAlignment.Left
-
--- Submit button
-local kBtnBg = Instance.new("Frame", keyPanel)
-kBtnBg.Size = UDim2.new(1, -40, 0, 42)
-kBtnBg.Position = UDim2.new(0, 20, 0, 154)
-kBtnBg.BackgroundColor3 = Color3.fromRGB(48,88,200)
-kBtnBg.BorderSizePixel = 0
-Instance.new("UICorner", kBtnBg).CornerRadius = UDim.new(0, 8)
-local kBtnShine = Instance.new("Frame", kBtnBg)
-kBtnShine.Size = UDim2.new(1, 0, 0.5, 0)
-kBtnShine.BackgroundColor3 = Color3.fromRGB(255,255,255)
-kBtnShine.BackgroundTransparency = 0.92
-kBtnShine.BorderSizePixel = 0
-Instance.new("UICorner", kBtnShine).CornerRadius = UDim.new(0, 8)
-local kBtn = Instance.new("TextButton", kBtnBg)
-kBtn.Size = UDim2.new(1, 0, 1, 0)
-kBtn.BackgroundTransparency = 1
-kBtn.Text = "✓  Submit Key"
-kBtn.TextColor3 = Color3.fromRGB(230,232,240)
-kBtn.Font = Enum.Font.GothamBold
-kBtn.TextSize = 13
-kBtn.TextScaled = false
-
--- Note
-local kNote = Instance.new("TextLabel", keyPanel)
-kNote.Size = UDim2.new(1, -40, 0, 16)
-kNote.Position = UDim2.new(0, 20, 0, 206)
-kNote.BackgroundTransparency = 1
-kNote.Text = "Key dibuat oleh PatraStarboy"
-kNote.TextColor3 = Color3.fromRGB(60,64,84)
-kNote.Font = Enum.Font.Gotham
-kNote.TextSize = 9
-kNote.TextScaled = false
-
--- Hover effect
-kBtn.MouseEnter:Connect(function()
-    TweenSvc:Create(kBtnBg, TweenInfo.new(0.1), {BackgroundColor3=Color3.fromRGB(62,110,230)}):Play()
-end)
-kBtn.MouseLeave:Connect(function()
-    TweenSvc:Create(kBtnBg, TweenInfo.new(0.1), {BackgroundColor3=Color3.fromRGB(48,88,200)}):Play()
-end)
-kBtn.TouchTap:Connect(function()
-    TweenSvc:Create(kBtnBg, TweenInfo.new(0.05), {BackgroundColor3=Color3.fromRGB(62,110,230)}):Play()
-    task.delay(0.15, function()
-        TweenSvc:Create(kBtnBg, TweenInfo.new(0.1), {BackgroundColor3=Color3.fromRGB(48,88,200)}):Play()
-    end)
-end)
-
--- Drag key panel
-do
-    local kDrag=false local kDS=nil local kSP=nil
-    keyPanel.InputBegan:Connect(function(i)
-        if i.UserInputType==Enum.UserInputType.MouseButton1 then
-            kDrag=true kDS=i.Position kSP=keyPanel.Position
-            i.Changed:Connect(function() if i.UserInputState==Enum.UserInputState.End then kDrag=false end end)
-        end
-    end)
-    UISvc.InputChanged:Connect(function(i)
-        if kDrag and i.UserInputType==Enum.UserInputType.MouseMovement then
-            local d=i.Position-kDS
-            keyPanel.Position=UDim2.new(kSP.X.Scale,kSP.X.Offset+d.X,kSP.Y.Scale,kSP.Y.Offset+d.Y)
-        end
-    end)
-    UISvc.TouchStarted:Connect(function(t,gp)
-        if gp then return end
-        local kp=keyPanel.AbsolutePosition local ks2=keyPanel.AbsoluteSize
-        local tp=t.Position
-        if tp.X>=kp.X and tp.X<=kp.X+ks2.X and tp.Y>=kp.Y and tp.Y<=kp.Y+ks2.Y then
-            kDrag=true kDS=tp kSP=keyPanel.Position
-        end
-    end)
-    UISvc.TouchMoved:Connect(function(t,gp)
-        if gp or not kDrag then return end
-        local d=t.Position-kDS
-        keyPanel.Position=UDim2.new(kSP.X.Scale,kSP.X.Offset+d.X,kSP.Y.Scale,kSP.Y.Offset+d.Y)
-    end)
-    UISvc.TouchEnded:Connect(function() kDrag=false end)
-end
-
--- Fungsi validasi key
-local keyValid = false
-
--- djb2 hash (sama persis dengan keygen.py)
-local function hashKey(s)
-    s = s:upper():gsub("%s",""):gsub("-","")
-    local h = 5381
-    for i = 1, #s do
-        h = ((h * 33) ~ string.byte(s,i)) % 0x100000000
-    end
-    return string.format("%08X", h)
-end
-
-local function checkKey(inputKey)
-    inputKey = inputKey:upper():gsub("%s","")
-    if inputKey == "" then
-        kStatus.Text = "⚠️ Key tidak boleh kosong!"
-        kStatus.TextColor3 = Color3.fromRGB(255,155,35)
-        return
-    end
-    kStatus.Text = "🔄 Mengecek key..."
-    kStatus.TextColor3 = Color3.fromRGB(148,154,175)
-    kBtn.Text = "Mengecek..."
-    task.spawn(function()
-        local ok, result = pcall(function()
-            return game:HttpGet(KEY_URL, true)
-        end)
-        if not ok or not result then
-            kStatus.Text = "❌ Gagal fetch. Coba lagi."
-            kStatus.TextColor3 = Color3.fromRGB(215,50,50)
-            kBtn.Text = "✓  Submit Key"
-            return
-        end
-        -- Hash key input lalu cari di list hash
-        local inputHash = hashKey(inputKey)
-        local found = result:find('"'..inputHash..'"') ~= nil
-        if found then
-            kStatus.Text = "✅ Key valid! Memuat script..."
-            kStatus.TextColor3 = Color3.fromRGB(52,210,110)
-            kBtn.Text = "✓  Valid!"
-            TweenSvc:Create(kBtnBg, TweenInfo.new(0.2), {BackgroundColor3=Color3.fromRGB(30,140,70)}):Play()
-            task.wait(0.8)
-            TweenSvc:Create(keySg, TweenInfo.new(0.3), {BackgroundTransparency=1}):Play()
-            TweenSvc:Create(keyPanel, TweenInfo.new(0.3), {
-                Position=UDim2.new(0.5,-190,0.6,-130),
-                BackgroundTransparency=1
-            }):Play()
-            task.wait(0.35)
-            keySg:Destroy()
-            keyValid = true
-        else
-            kStatus.Text = "❌ Key salah atau tidak valid!"
-            kStatus.TextColor3 = Color3.fromRGB(215,50,50)
-            kBtn.Text = "✓  Submit Key"
-            TweenSvc:Create(kBtnBg, TweenInfo.new(0.1), {BackgroundColor3=Color3.fromRGB(140,30,30)}):Play()
-            task.delay(0.5, function()
-                TweenSvc:Create(kBtnBg, TweenInfo.new(0.2), {BackgroundColor3=Color3.fromRGB(48,88,200)}):Play()
-            end)
-        end
-    end)
-end
-
-kBtn.MouseButton1Click:Connect(function() checkKey(kInput.Text) end)
-kInput.FocusLost:Connect(function(enterPressed)
-    if enterPressed then checkKey(kInput.Text) end
-end)
-
--- Tunggu sampai key valid sebelum load script utama
-repeat task.wait(0.1) until keyValid
+local _player      = Players.LocalPlayer
+local _pGui        = _player:WaitForChild("PlayerGui")
 
 -- ============================================================
 -- MAIN SCRIPT (load setelah key valid)
@@ -823,11 +572,6 @@ local function sliderRow(p,y,lbl,minV,maxV,defV,unit)
 		fill.Size=UDim2.new((v-minV)/(maxV-minV),0,1,0)
 		valL.Text=tostring(v)..(unit or "")
 	end
-	local function inTrack(xPos)
-		local ap=track.AbsolutePosition
-		local as=track.AbsoluteSize
-		return xPos>=ap.X-20 and xPos<=ap.X+as.X+20
-	end
 	-- Mouse
 	track.InputBegan:Connect(function(i)
 		if i.UserInputType==Enum.UserInputType.MouseButton1 then
@@ -842,13 +586,13 @@ local function sliderRow(p,y,lbl,minV,maxV,defV,unit)
 			setVal(i.Position.X)
 		end
 	end)
-	-- Touch: pakai UIS global, cek posisi sentuhan ada di area track
+	-- Touch
+	local as
 	UIS.TouchStarted:Connect(function(t,gp)
 		if gp then return end
 		local tp=t.Position
 		local ap=track.AbsolutePosition as=track.AbsoluteSize
 		local ar=row.AbsolutePosition
-		-- Cek sentuhan di area row (lebih mudah kena di HP)
 		if tp.X>=ar.X and tp.X<=ar.X+row.AbsoluteSize.X
 			and tp.Y>=ar.Y+16 and tp.Y<=ar.Y+row.AbsoluteSize.Y then
 			slDrag=true setVal(tp.X)
@@ -1095,11 +839,7 @@ line(fullyScroll,78) secHdr(fullyScroll,84,"SIMPAN KOORDINAT APART")
 local coordCard=F(fullyScroll,C.card,3) coordCard.Size=UDim2.new(1,-24,0,34) coordCard.Position=UDim2.new(0,12,0,102) corner(coordCard,8)
 local coordL=T(coordCard,"Belum disimpan",C.txtD,Enum.Font.Gotham,Enum.TextXAlignment.Center,4,10) coordL.Size=UDim2.new(0.75,0,1,0) coordL.Position=UDim2.new(0,8,0,0)
 
-local saveW,saveB=actionBtn(fullyScroll,102,"📍 Simpan Posisi Sekarang",C.purple,C.txt)
--- Ganti posisi dan ukuran agar di samping coordCard
-saveW.Size=UDim2.new(0,0,0,0) -- hide dulu, buat manual
-saveW:Destroy()
--- Buat tombol save di kanan coordCard
+-- Tombol save di kanan coordCard
 local savePosW=F(fullyScroll,C.purple,4) savePosW.Size=UDim2.new(0.22,-4,0,34) savePosW.Position=UDim2.new(0.78,0,0,102) corner(savePosW,8)
 local savePosB=B(savePosW,"📍 Save",C.txt,Enum.Font.GothamBold,5,10) savePosB.Size=UDim2.new(1,0,1,0) savePosB.TextScaled=false
 
@@ -1162,8 +902,6 @@ hoverBtn(fullyStartW,fullyStartB,C.blueD,Color3.fromRGB(62,110,230))
 hoverBtn(fullyStopW,fullyStopB,C.red,Color3.fromRGB(240,65,65))
 
 -- ============================================================
-
--- ============================================================
 -- TELEPORT PAGE
 -- ============================================================
 local teleportPage=menuPages[3]
@@ -1188,8 +926,6 @@ UIS.InputBegan:Connect(function(i,gp)
 		if root then root.CFrame=root.CFrame+root.CFrame.LookVector*6 end
 	end
 end)
--- Noclip
-
 
 line(teleportPage,124) secHdr(teleportPage,130,"LOKASI")
 local LOCATIONS={
@@ -1397,11 +1133,10 @@ UIS.InputChanged:Connect(function(i)
 		panel.Position=UDim2.new(startPos2.X.Scale,startPos2.X.Offset+d.X,startPos2.Y.Scale,startPos2.Y.Offset+d.Y)
 	end
 end)
--- Touch drag: pakai UIS global (Frame tidak support TouchStarted)
+-- Touch drag
 UIS.TouchStarted:Connect(function(t,gp)
 	if gp then return end
 	local pos=t.Position
-	-- Cek apakah sentuhan di area titleBar
 	local tbPos=titleBar.AbsolutePosition
 	local tbSize=titleBar.AbsoluteSize
 	if pos.X>=tbPos.X and pos.X<=tbPos.X+tbSize.X
