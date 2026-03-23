@@ -1202,9 +1202,33 @@ RunService.Heartbeat:Connect(function()
 end)
 
 -- ============================================================
-
+-- CHARACTER ADDED — Stop Auto Fully jika karakter mati (respawn)
+-- ============================================================
 player.CharacterAdded:Connect(function(char)
-	character=char hrp=char:WaitForChild("HumanoidRootPart")
+	character = char
+	hrp = char:WaitForChild("HumanoidRootPart")
+
+	-- Jika Auto Fully sedang berjalan, hentikan semua loop
+	if fullyRunning then
+		fullyRunning = false
+		isRunning    = false
+		isBusy       = false
+		task.defer(function()
+			setFullyUI(false)
+			setFullyStatus("💀 Karakter mati! Auto Fully dihentikan.", Color3.fromRGB(215, 50, 50))
+			setStatus("💀 Karakter mati! Auto Fully dihentikan.", Color3.fromRGB(215, 50, 50))
+		end)
+	end
+
+	-- Jika hanya Auto Masak yang berjalan (tanpa Fully), hentikan juga
+	if isRunning then
+		isRunning = false
+		isBusy    = false
+		task.defer(function()
+			setRunUI(false)
+			setStatus("💀 Karakter mati! Auto Masak dihentikan.", Color3.fromRGB(215, 50, 50))
+		end)
+	end
 end)
 
 print("[PatStore v9] Loaded!")
