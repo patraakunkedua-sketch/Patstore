@@ -199,8 +199,8 @@ local function doAutoSell(setStatus2)
 	task.wait(1)
 end
 
--- ── AUTO BELI ──────────────────────────────────────
--- FIX: buyQty sekarang diambil dari getQtyAll() tiap kali beli dipanggil
+-- ── AUTO BELI FIX FINAL ─────────────────────────────
+
 local buyQty  = {1,1,1}
 local buyBusy = false
 
@@ -211,33 +211,81 @@ local BUY_ITEMS = {
 }
 
 local function doAutoBuy(setStatus2, overrideQty)
-	-- overrideQty: angka tunggal untuk semua item (dari slider),
-	-- atau nil untuk pakai buyQty[] individual
 	if not storePurchaseRE then
 		setStatus2("❌ Remote tidak ada!", Color3.fromRGB(210,40,40))
 		task.wait(1.5)
 		return
 	end
 
-	local totalBought = 0
-	for idx, item in ipairs(BUY_ITEMS) do
-		-- FIX: pakai overrideQty kalau ada, fallback ke buyQty[idx]
-		local qty = overrideQty or buyQty[idx] or 1
-		setStatus2("🛒 Beli "..item.display.." ×"..qty.."...", Color3.fromRGB(100,180,255))
-		for _ = 1, qty do
-			pcall(function() storePurchaseRE:FireServer(item.name, 1) end)
-			task.wait(0.25)
-			totalBought += 1
-		end
-		totalBuy += qty
-		setStatus2("✅ "..item.display.." ×"..qty.." selesai!", Color3.fromRGB(80,220,130))
-		task.wait(0.15)
+	if not BUY_ITEMS or type(BUY_ITEMS) ~= "table" then
+		setStatus2("❌ BUY_ITEMS error!", Color3.fromRGB(210,40,40))
+		return
 	end
-	setStatus2("✅ Beli selesai! "..totalBought.."x item.", Color3.fromRGB(80,220,130))
+
+	local totalBought = 0
+
+	for idx, item in ipairs(BUY_ITEMS) do
+		local qty = overrideQty or buyQty[idx] or 1
+
+		setStatus2("🛒 Beli "..item.display.." ×"..qty.."...", Color3.fromRGB(100,180,255))
+
+		local before = countItem(item.name)
+		local successBuy = 0
+
+		for i = 1, qty do
+			local ok = pcall(function()
+				storePurchaseRE:FireServer(item.name, 1)
+			end)
+			if ok then successBuy = successBuy + 1 end
+			task.wait(0.4)
+		end
+
+		local timeout = 0
+		local gained = 0
+
+		repeat
+			task.wait(0.2)
+			timeout = timeout + 0.2
+			gained = countItem(item.name) - before
+		until gained >= qty or timeout > 6
+
+		if gained < qty then
+			local missing = qty - gained
+			setStatus2("🔁 Retry "..missing.." "..item.display, Color3.fromRGB(255,160,40))
+
+			for i = 1, missing do
+				pcall(function()
+					storePurchaseRE:FireServer(item.name, 1)
+				end)
+				task.wait(0.5)
+			end
+
+			timeout = 0
+			repeat
+				task.wait(0.2)
+				timeout = timeout + 0.2
+				gained = countItem(item.name) - before
+			until gained >= qty or timeout > 5
+		end
+
+		totalBought = totalBought + gained
+		totalBuy = totalBuy + gained
+
+		if gained < qty then
+			setStatus2("⚠️ "..item.display.." kurang ("..gained.."/"..qty..")", Color3.fromRGB(255,120,120))
+		else
+			setStatus2("✅ "..item.display.." ×"..gained.." selesai!", Color3.fromRGB(80,220,130))
+		end
+
+		task.wait(0.2)
+	end
+
+	setStatus2("✅ Beli selesai! "..totalBought.." item.", Color3.fromRGB(80,220,130))
 	task.wait(1)
 end
 
--- ── AUTO MASAK ─────────────────────────────────────
+-- ── AUTO MASAK (FIXED & STABLE) ─────────────────────
+
 local function countdown(secs, fmt, color)
 	for i = secs, 1, -1 do
 		if not isRunning then return false end
@@ -248,152 +296,171 @@ local function countdown(secs, fmt, color)
 end
 
 local function cookInteract(toolName, radius)
-	if toolName then equipTool(toolName) task.wait(0.2) end
+	if toolName then
+		equipTool(toolName)
+		task.wait(0.2)
+	end
+
 	firePromptNearby(radius or 8)
 	task.wait(0.1)
+
 	pcall(function()
-		VIM:SendKeyEvent(true,  Enum.KeyCode.E, false, game)
+		VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
 		task.wait(0.1)
 		VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
 	end)
+
 	task.wait(0.1)
 	firePromptNearby(radius or 8)
 end
 
 local rpcQueue = {}
+
 if rpcRE then
-	rpcRE.OnClientEvent:Connect(function(bufArg, tblArg)
+	rpcRE.OnClientEvent:Connect(function(_, tblArg)
 		if type(tblArg) ~= "table" then return end
-		local v1  = tblArg[1]
-		local v2  = tblArg[2]
+
+		local v1 = tblArg[1]
+		local v2 = tblArg[2]
 		local msg = tostring(v1 or ""):lower()
+
 		if v2 == "TextLabel" and tonumber(v1) then
 			table.insert(rpcQueue, {type="timer", secs=tonumber(v1)})
-		elseif msg:find("boil") or (msg:find("wait") and msg:find("water")) then
+			return
+		end
+
+		if msg:find("boil") or msg:find("water") then
 			table.insert(rpcQueue, {type="wait_boil"})
-		elseif msg:find("sugar") or msg:find("dump") then
+		elseif msg:find("sugar") then
 			table.insert(rpcQueue, {type="add_sugar"})
-		elseif msg:find("gelatin") or msg:find("pour") then
+		elseif msg:find("gelatin") then
 			table.insert(rpcQueue, {type="add_gelatin"})
-		elseif msg:find("cook for") or msg:find("let the") then
+		elseif msg:find("cook") then
 			table.insert(rpcQueue, {type="wait_cook"})
-		elseif msg:find("bag") or msg:find("empty bag") then
+		elseif msg:find("bag") then
 			table.insert(rpcQueue, {type="bag_result"})
 		end
 	end)
 end
 
 local function waitRPC(instrType, timeout)
-	local elapsed = 0
-	while elapsed < timeout do
-		for i, inst in ipairs(rpcQueue) do
-			if inst.type == instrType then
+	local start = tick()
+	while tick() - start < timeout do
+		for i = 1, #rpcQueue do
+			local inst = rpcQueue[i]
+			if inst and inst.type == instrType then
 				table.remove(rpcQueue, i)
 				return inst
 			end
 		end
-		task.wait(0.15)
-		elapsed += 0.15
+		task.wait(0.1)
 	end
 	return nil
 end
 
 local function popTimer()
-	for i = #rpcQueue, 1, -1 do
-		if rpcQueue[i].type == "timer" then
-			local t = rpcQueue[i]
+	for i = 1, #rpcQueue do
+		local v = rpcQueue[i]
+		if v.type == "timer" then
 			table.remove(rpcQueue, i)
-			return t.secs
+			return v.secs
 		end
 	end
 	return nil
 end
 
 local function doOneCook()
-	isBusy    = true
-	rpcQueue  = {}
+	isBusy = true
+	table.clear(rpcQueue)
+
 	local snapS = countItem(CFG.ITEM_MS_SMALL)
 	local snapM = countItem(CFG.ITEM_MS_MEDIUM)
 	local snapL = countItem(CFG.ITEM_MS_LARGE)
 
 	setStatus("💧 Masukkan Water...", Color3.fromRGB(100,180,255))
-	cookInteract(CFG.ITEM_WATER, 8)
-	task.wait(0.5)
+	cookInteract(CFG.ITEM_WATER)
 
-	local boilSecs = nil
-	for _ = 1, 20 do
+	local boilSecs
+	for _ = 1, 30 do
 		boilSecs = popTimer()
 		if boilSecs then break end
-		task.wait(0.15)
+		task.wait(0.1)
 	end
 	boilSecs = boilSecs or CFG.WATER_WAIT
+
 	if not countdown(boilSecs, "💧 Mendidih... ⏱ %ds", Color3.fromRGB(80,150,255)) then
-		isBusy = false return false
+		isBusy = false
+		return false
 	end
 
-	setStatus("🧂 Tunggu instruksi Sugar...", Color3.fromRGB(255,220,100))
-	waitRPC("add_sugar", 8)
-	if not isRunning then isBusy = false return false end
+	setStatus("🧂 Tunggu Sugar...", Color3.fromRGB(255,220,100))
+	waitRPC("add_sugar", 10)
+
 	setStatus("🧂 Masukkan Sugar...", Color3.fromRGB(255,220,100))
-	cookInteract(CFG.ITEM_SUGAR, 8)
-	task.wait(0.3)
+	cookInteract(CFG.ITEM_SUGAR)
 
-	setStatus("🟡 Tunggu instruksi Gelatin...", Color3.fromRGB(255,200,50))
-	waitRPC("add_gelatin", 6)
+	setStatus("🟡 Tunggu Gelatin...", Color3.fromRGB(255,200,50))
+	waitRPC("add_gelatin", 10)
+
 	setStatus("🟡 Masukkan Gelatin...", Color3.fromRGB(255,200,50))
-	cookInteract(CFG.ITEM_GEL, 8)
-	task.wait(0.3)
+	cookInteract(CFG.ITEM_GEL)
 
-	local cookSecs = nil
-	for _ = 1, 20 do
+	local cookSecs
+	for _ = 1, 30 do
 		cookSecs = popTimer()
 		if cookSecs then break end
-		task.wait(0.15)
+		task.wait(0.1)
 	end
 	cookSecs = cookSecs or CFG.COOK_WAIT
+
 	if not countdown(cookSecs, "🔥 Memasak... ⏱ %ds", Color3.fromRGB(80,140,255)) then
-		isBusy = false return false
+		isBusy = false
+		return false
 	end
 
-	setStatus("🎒 Tunggu instruksi bag...", Color3.fromRGB(100,160,255))
-	waitRPC("bag_result", 10)
+	setStatus("🎒 Tunggu Bag...", Color3.fromRGB(100,160,255))
+	waitRPC("bag_result", 12)
 
-	local bag, t3 = nil, 0
+	local bag
+	local t = 0
 	repeat
 		bag = player.Backpack:FindFirstChild(CFG.ITEM_EMPTY)
-		task.wait(0.5)
-		t3 += 0.5
-	until bag or t3 > 12
+		task.wait(0.3)
+		t += 0.3
+	until bag or t > 10
 
 	if not bag then
 		setStatus("❌ Empty Bag tidak ada!", Color3.fromRGB(210,40,40))
-		task.wait(1.5)
 		isBusy = false
 		return false
 	end
 
 	setStatus("🎒 Ambil Marshmallow...", Color3.fromRGB(100,180,255))
-	cookInteract(CFG.ITEM_EMPTY, 8)
-	setStatus("⏳ Tunggu MS masuk...", Color3.fromRGB(100,160,255))
+	cookInteract(CFG.ITEM_EMPTY)
 
 	local waitMS = 0
-	local newS, newM, newL = 0, 0, 0
+	local newS, newM, newL
+
 	repeat
-		task.wait(0.4)
-		waitMS += 0.4
+		task.wait(0.3)
+		waitMS += 0.3
 		newS = countItem(CFG.ITEM_MS_SMALL)  - snapS
 		newM = countItem(CFG.ITEM_MS_MEDIUM) - snapM
 		newL = countItem(CFG.ITEM_MS_LARGE)  - snapL
-	until (newS > 0 or newM > 0 or newL > 0) or waitMS > 10
+	until (newS > 0 or newM > 0 or newL > 0) or waitMS > 8
 
-	if     newS > 0 then stats.small  += newS
-	elseif newM > 0 then stats.medium += newM
-	elseif newL > 0 then stats.large  += newL
-	else                  stats.small += 1
+	if newS > 0 then
+		stats.small += newS
+	elseif newM > 0 then
+		stats.medium += newM
+	elseif newL > 0 then
+		stats.large += newL
+	else
+		stats.small += 1
 	end
 
 	setStatus("✅ MS ke-"..totalMS().." selesai!", Color3.fromRGB(80,210,255))
-	task.wait(0.2)
+
 	isBusy = false
 	return true
 end
@@ -401,12 +468,12 @@ end
 local function autoLoop()
 	while isRunning do
 		if not hasAllIngredients() then
-			setStatus("❌ Bahan habis! Gunakan Auto Beli.", Color3.fromRGB(210,40,40))
+			setStatus("❌ Bahan habis!", Color3.fromRGB(210,40,40))
 			isRunning = false
 			break
 		end
 		doOneCook()
-		if isRunning then task.wait(0.3) end
+		task.wait(0.3)
 	end
 end
 
@@ -495,7 +562,6 @@ local fullySavedPos  = nil
 local function doAutoFully(setFullyStatus)
 	fullyRunning = true
 
-	-- Anchor loop supaya kendaraan tidak drift
 	local anchorConn = RunService.Heartbeat:Connect(function()
 		if not fullyRunning then return end
 		local ch = player.Character
@@ -523,7 +589,6 @@ local function doAutoFully(setFullyStatus)
 		fullyTeleport(NPC_MS_POS)
 		if not fullyRunning then break end
 
-		-- FIX: pass target langsung ke doAutoBuy supaya sesuai slider
 		setFullyStatus("🛒 Beli bahan untuk "..target.." MS...", Color3.fromRGB(100,180,255))
 		doAutoBuy(setFullyStatus, target)
 		if not fullyRunning then break end
@@ -729,8 +794,6 @@ end
 -- ============================================================
 -- GUI HELPERS
 -- ============================================================
--- Semua helper GUI dibungkus dalam block do...end
--- untuk mengurangi local register di scope utama
 local C = {
 	bg    = Color3.fromRGB(11,11,16),
 	panel = Color3.fromRGB(16,16,22),
@@ -870,73 +933,87 @@ local function hoverBtn(w, b, nc, hc)
 	end)
 end
 
-local function sliderRow(p, y, lbl, minV, maxV, defV, unit)
+-- ============================================================
+-- STEPPER ROW (Ganti Slider — tombol +/-)
+-- ============================================================
+local function stepperRow(p, y, lbl, minV, maxV, defV, unit)
 	local row = mkFrame(p, C.card, 2)
-	row.Size     = UDim2.new(1,-24,0,48)
+	row.Size     = UDim2.new(1,-24,0,44)
 	row.Position = UDim2.new(0,12,0,y)
 	corner(row, 8)
 
+	-- Label nama
 	local nm = mkLabel(row, lbl, C.txtM, Enum.Font.Gotham, Enum.TextXAlignment.Left, 3, 10)
-	nm.Size     = UDim2.new(0.6,0,0,20)
+	nm.Size     = UDim2.new(0.5,0,0,20)
 	nm.Position = UDim2.new(0,10,0,2)
 
-	local valL = mkLabel(row, tostring(defV)..(unit or ""), C.txt, Enum.Font.GothamBold, Enum.TextXAlignment.Right, 3, 11)
-	valL.Size     = UDim2.new(0.4,-10,0,20)
-	valL.Position = UDim2.new(0.6,0,0,2)
-
-	local track = mkFrame(row, C.line, 3)
-	track.Size     = UDim2.new(1,-20,0,8)
-	track.Position = UDim2.new(0,10,0,28)
-	corner(track, 4)
-
-	local fill = mkFrame(track, C.blue, 4)
-	fill.Size = UDim2.new((defV-minV)/(maxV-minV), 0, 1, 0)
-	corner(fill, 4)
-
 	local curVal = defV
-	local slDrag = false
 
-	local function setVal(xPos)
-		local rel = (xPos - track.AbsolutePosition.X) / track.AbsoluteSize.X
-		local v   = math.clamp(math.floor(minV + rel*(maxV-minV)), minV, maxV)
-		curVal     = v
-		fill.Size  = UDim2.new((v-minV)/(maxV-minV), 0, 1, 0)
-		valL.Text  = tostring(v)..(unit or "")
+	-- Nilai tengah
+	local valL = mkLabel(row, tostring(curVal)..(unit or ""), C.txt, Enum.Font.GothamBold, Enum.TextXAlignment.Center, 3, 13)
+	valL.Size     = UDim2.new(0,50,0,24)
+	valL.Position = UDim2.new(0.5,-25,0,18)
+
+	-- Tombol −
+	local minusW = mkFrame(row, C.blueD, 3)
+	minusW.Size     = UDim2.new(0,28,0,24)
+	minusW.Position = UDim2.new(0.5,-25-34,0,18)
+	corner(minusW, 6)
+	local minusB = mkBtn(minusW, "−", C.txt, Enum.Font.GothamBold, 4, 14)
+	minusB.Size      = UDim2.new(1,0,1,0)
+	minusB.TextScaled= false
+
+	-- Tombol +
+	local plusW = mkFrame(row, C.blueD, 3)
+	plusW.Size     = UDim2.new(0,28,0,24)
+	plusW.Position = UDim2.new(0.5,25+6,0,18)
+	corner(plusW, 6)
+	local plusB = mkBtn(plusW, "+", C.txt, Enum.Font.GothamBold, 4, 14)
+	plusB.Size      = UDim2.new(1,0,1,0)
+	plusB.TextScaled= false
+
+	local function updateVal(v)
+		curVal    = math.clamp(v, minV, maxV)
+		valL.Text = tostring(curVal)..(unit or "")
 	end
 
-	track.InputBegan:Connect(function(i)
-		if i.UserInputType == Enum.UserInputType.MouseButton1 then
-			slDrag = true
-			setVal(i.Position.X)
-		end
+	minusB.MouseButton1Click:Connect(function()
+		updateVal(curVal - 1)
+		TweenService:Create(minusW, TweenInfo.new(0.05), {BackgroundColor3=C.blue}):Play()
+		task.delay(0.1, function()
+			TweenService:Create(minusW, TweenInfo.new(0.1), {BackgroundColor3=C.blueD}):Play()
+		end)
 	end)
-	track.InputEnded:Connect(function(i)
-		if i.UserInputType == Enum.UserInputType.MouseButton1 then
-			slDrag = false
-		end
+
+	plusB.MouseButton1Click:Connect(function()
+		updateVal(curVal + 1)
+		TweenService:Create(plusW, TweenInfo.new(0.05), {BackgroundColor3=C.blue}):Play()
+		task.delay(0.1, function()
+			TweenService:Create(plusW, TweenInfo.new(0.1), {BackgroundColor3=C.blueD}):Play()
+		end)
 	end)
-	UIS.InputChanged:Connect(function(i)
-		if slDrag and i.UserInputType == Enum.UserInputType.MouseMovement then
-			setVal(i.Position.X)
-		end
-	end)
-	UIS.TouchStarted:Connect(function(t, gp)
-		if gp then return end
-		local tp = t.Position
-		local ar = row.AbsolutePosition
-		if tp.X >= ar.X and tp.X <= ar.X + row.AbsoluteSize.X
-			and tp.Y >= ar.Y+16 and tp.Y <= ar.Y + row.AbsoluteSize.Y then
-			slDrag = true
-			setVal(tp.X)
-		end
-	end)
-	UIS.TouchMoved:Connect(function(t, gp)
-		if gp or not slDrag then return end
-		setVal(t.Position.X)
-	end)
-	UIS.TouchEnded:Connect(function(_, gp)
-		if not gp then slDrag = false end
-	end)
+
+	-- Hold untuk naikkan/turunkan cepat
+	local function holdRepeat(btn, delta)
+		local holding = false
+		btn.MouseButton1Down:Connect(function()
+			holding = true
+			task.delay(0.4, function()
+				while holding do
+					updateVal(curVal + delta)
+					task.wait(0.07)
+				end
+			end)
+		end)
+		btn.MouseButton1Up:Connect(function() holding = false end)
+		btn.MouseLeave:Connect(function() holding = false end)
+	end
+
+	holdRepeat(minusB, -1)
+	holdRepeat(plusB,   1)
+
+	hoverBtn(minusW, minusB, C.blueD, C.blue)
+	hoverBtn(plusW,  plusB,  C.blueD, C.blue)
 
 	return function() return curVal end
 end
@@ -1006,7 +1083,6 @@ do
 	verL.Position = UDim2.new(0,88,0,0)
 end
 
--- Close button
 local closeW = mkFrame(titleBar, C.card, 4)
 closeW.Size     = UDim2.new(0,24,0,24)
 closeW.Position = UDim2.new(1,-62,0.5,-12)
@@ -1019,7 +1095,6 @@ closeB.MouseButton1Click:Connect(function() panel.Visible = not panel.Visible en
 closeB.MouseEnter:Connect(function() TweenService:Create(closeW,TweenInfo.new(0.1),{BackgroundColor3=C.red}):Play() closeB.TextColor3=C.txt end)
 closeB.MouseLeave:Connect(function() TweenService:Create(closeW,TweenInfo.new(0.1),{BackgroundColor3=C.card}):Play() closeB.TextColor3=C.txtM end)
 
--- Hide button
 local hideW = mkFrame(titleBar, C.card, 4)
 hideW.Size     = UDim2.new(0,24,0,24)
 hideW.Position = UDim2.new(1,-32,0.5,-12)
@@ -1146,7 +1221,6 @@ end
 do
 	local farmPage = menuPages[1]
 
-	-- Tab bar
 	local tabBar = mkFrame(farmPage, C.tabBg, 3)
 	tabBar.Size = UDim2.new(1,0,0,30)
 
@@ -1269,7 +1343,6 @@ do
 		hoverBtn(startW, startB, C.blueD, Color3.fromRGB(62,110,230))
 		hoverBtn(stopW,  stopB,  C.red,   Color3.fromRGB(240,65,65))
 
-		-- Update stats loop untuk page masak
 		local vW_ref, vSu_ref, vGe_ref, msBig_ref = vW, vSu, vGe, msBig
 		RunService.Heartbeat:Connect(function()
 			pcall(function()
@@ -1338,14 +1411,13 @@ do
 	end
 
 	-- PAGE 3: BELI
-	-- FIX: getQtyAll sekarang mengambil nilai dari slider dan dipass ke doAutoBuy
 	local vBuy2
 	local beliStatL
 	do
 		local pg3 = pages[3]
 		local pg3Scroll = Instance.new("ScrollingFrame")
 		pg3Scroll.Size                  = UDim2.new(1,0,1,0)
-		pg3Scroll.CanvasSize            = UDim2.new(0,0,0,400)
+		pg3Scroll.CanvasSize            = UDim2.new(0,0,0,420)
 		pg3Scroll.BackgroundTransparency= 1
 		pg3Scroll.BorderSizePixel       = 0
 		pg3Scroll.ScrollBarThickness    = 3
@@ -1358,14 +1430,14 @@ do
 		beliInfo.Position = UDim2.new(0,12,0,26)
 		corner(beliInfo, 8)
 		stroke(beliInfo, C.line, 1)
-		local bInfoL = mkLabel(beliInfo, "Slider = jumlah beli per item. Tekan Start untuk beli semua.", C.txtM, Enum.Font.Gotham, Enum.TextXAlignment.Left, 4, 10)
+		local bInfoL = mkLabel(beliInfo, "Atur jumlah beli lalu tekan Start.", C.txtM, Enum.Font.Gotham, Enum.TextXAlignment.Left, 4, 10)
 		bInfoL.Size = UDim2.new(1,-10,1,0)
 
 		line(pg3Scroll, 60)
 		secHdr(pg3Scroll, 66, "JUMLAH BELI")
 
-		-- Slider ini adalah sumber kebenaran untuk qty beli
-		local getQtyAll = sliderRow(pg3Scroll, 82, "Jumlah semua bahan", 1, 50, 5, "x")
+		-- STEPPER (ganti slider)
+		local getQtyAll = stepperRow(pg3Scroll, 82, "Jumlah semua bahan", 1, 99, 5, "x")
 
 		local itemData = {
 			{icon="🟡", name="Gelatin",         price="$70"},
@@ -1373,7 +1445,7 @@ do
 			{icon="💧", name="Water",           price="$20"},
 		}
 		for i, item in ipairs(itemData) do
-			local ry  = 136 + (i-1)*36
+			local ry  = 132 + (i-1)*36
 			local row = mkFrame(pg3Scroll, C.card, 3)
 			row.Size     = UDim2.new(1,-24,0,30)
 			row.Position = UDim2.new(0,12,0,ry)
@@ -1417,12 +1489,10 @@ do
 		beliBtnB.MouseButton1Click:Connect(function()
 			if buyBusy then return end
 			buyBusy = true
-			-- FIX: ambil qty dari slider saat tombol ditekan
 			local qty = getQtyAll()
 			beliBtnW.BackgroundColor3 = Color3.fromRGB(30,50,140)
 			beliBtnB.Text = "Membeli..."
 			task.spawn(function()
-				-- pass qty langsung, bypass buyQty[] array
 				doAutoBuy(setBeliStatus, qty)
 				beliBtnW.BackgroundColor3 = C.blueD
 				beliBtnB.Text = "🛒  Start Auto Beli"
@@ -1453,7 +1523,6 @@ do
 		end
 	end
 
-	-- Update jual & stats heartbeat (defined here so sVals is in scope)
 	local ping = 0
 	local lastUpdate = tick()
 	RunService.Heartbeat:Connect(function()
@@ -1479,7 +1548,7 @@ do
 			ping = tonumber(ps:match("%d+")) or ping
 		end)
 	end)
-end -- end FARM PAGE do block
+end -- end FARM PAGE
 
 -- ============================================================
 -- AUTO FULLY PAGE (index 2)
@@ -1550,21 +1619,22 @@ do
 	line(fullyScroll, 142)
 	secHdr(fullyScroll, 148, "SETTING")
 
-	local getFullyTarget = sliderRow(fullyScroll, 164, "Target MS per loop", 1, 50, 5, "x")
+	-- STEPPER (ganti slider)
+	local getFullyTarget = stepperRow(fullyScroll, 164, "Target MS per loop", 1, 99, 5, "x")
 
 	local infoTip = mkFrame(fullyScroll, Color3.fromRGB(11,16,22), 3)
 	infoTip.Size     = UDim2.new(1,-24,0,22)
-	infoTip.Position = UDim2.new(0,12,0,218)
+	infoTip.Position = UDim2.new(0,12,0,214)
 	corner(infoTip, 6)
 	local iTL = mkLabel(infoTip, "Beli bahan = target × (1 air + 1 gula + 1 gelatin)", C.txtD, Enum.Font.Gotham, Enum.TextXAlignment.Center, 4, 9)
 	iTL.Size = UDim2.new(1,-8,1,0)
 
-	line(fullyScroll, 246)
-	secHdr(fullyScroll, 252, "STATUS")
+	line(fullyScroll, 242)
+	secHdr(fullyScroll, 248, "STATUS")
 
 	local fullyStatusCard = mkFrame(fullyScroll, C.bg, 3)
 	fullyStatusCard.Size     = UDim2.new(1,-24,0,28)
-	fullyStatusCard.Position = UDim2.new(0,12,0,270)
+	fullyStatusCard.Position = UDim2.new(0,12,0,266)
 	corner(fullyStatusCard, 8)
 	stroke(fullyStatusCard, C.line, 1)
 
@@ -1578,11 +1648,11 @@ do
 		setStatus(msg, col)
 	end
 
-	local vFullyMS = statRow(fullyScroll, 306, "🍬","Total MS Dibuat", Color3.fromRGB(100,190,255))
-	line(fullyScroll, 346)
+	local vFullyMS = statRow(fullyScroll, 302, "🍬","Total MS Dibuat", Color3.fromRGB(100,190,255))
+	line(fullyScroll, 342)
 
-	local fullyStartW, fullyStartB = actionBtn(fullyScroll, 354, "⚡  Start Auto Fully", C.blueD, C.txt)
-	local fullyStopW,  fullyStopB  = actionBtn(fullyScroll, 354, "■  Stop Auto Fully",  C.red,   C.txt)
+	local fullyStartW, fullyStartB = actionBtn(fullyScroll, 350, "⚡  Start Auto Fully", C.blueD, C.txt)
+	local fullyStopW,  fullyStopB  = actionBtn(fullyScroll, 350, "■  Stop Auto Fully",  C.red,   C.txt)
 	fullyStopW.Visible = false
 
 	local function setFullyUI(r)
@@ -1596,7 +1666,6 @@ do
 			setFullyStatus("❌ Simpan koordinat Apart dulu!", C.red)
 			return
 		end
-		-- FIX: ambil target dari slider tepat saat start ditekan
 		fullyTarget = getFullyTarget()
 		setFullyUI(true)
 		setFullyStatus("⚡ Auto Fully berjalan...", C.blue)
@@ -1619,7 +1688,6 @@ do
 	hoverBtn(fullyStartW, fullyStartB, C.blueD, Color3.fromRGB(62,110,230))
 	hoverBtn(fullyStopW,  fullyStopB,  C.red,   Color3.fromRGB(240,65,65))
 
-	-- Update vFullyMS
 	RunService.Heartbeat:Connect(function()
 		pcall(function() vFullyMS.Text = tostring(totalMS()) end)
 	end)
@@ -1711,7 +1779,7 @@ do
 	local featurePage   = menuPages[4]
 	local featureScroll = Instance.new("ScrollingFrame")
 	featureScroll.Size                  = UDim2.new(1,0,1,0)
-	featureScroll.CanvasSize            = UDim2.new(0,0,0,560)
+	featureScroll.CanvasSize            = UDim2.new(0,0,0,580)
 	featureScroll.BackgroundTransparency= 1
 	featureScroll.BorderSizePixel       = 0
 	featureScroll.ScrollBarThickness    = 3
@@ -1819,11 +1887,12 @@ do
 		end
 	end)
 
-	local getAntiRkRadius = sliderRow(featureScroll, 206, "Radius Deteksi", 10, 80, 40, "s")
+	-- STEPPER (ganti slider radius)
+	local getAntiRkRadius = stepperRow(featureScroll, 206, "Radius Deteksi", 5, 100, 40, "s")
 
 	local rkStatBox = mkFrame(featureScroll, C.bg, 3)
 	rkStatBox.Size     = UDim2.new(1,-24,0,28)
-	rkStatBox.Position = UDim2.new(0,12,0,260)
+	rkStatBox.Position = UDim2.new(0,12,0,256)
 	corner(rkStatBox, 8)
 	stroke(rkStatBox, C.line, 1)
 
@@ -1838,18 +1907,18 @@ do
 
 	local prisonCard = mkFrame(featureScroll, C.card, 3)
 	prisonCard.Size     = UDim2.new(1,-24,0,28)
-	prisonCard.Position = UDim2.new(0,12,0,294)
+	prisonCard.Position = UDim2.new(0,12,0,290)
 	corner(prisonCard, 8)
 	local prisonL = mkLabel(prisonCard, "🔒 Penjara: 551, 3.6, -564", C.txtD, Enum.Font.Gotham, Enum.TextXAlignment.Center, 4, 10)
 	prisonL.Size = UDim2.new(1,-8,1,0)
 
 	-- BOOST FPS
-	line(featureScroll, 328)
-	secHdr(featureScroll, 334, "BOOST FPS")
+	line(featureScroll, 324)
+	secHdr(featureScroll, 330, "BOOST FPS")
 
 	local fpsInfoCard = mkFrame(featureScroll, Color3.fromRGB(11,20,11), 3)
 	fpsInfoCard.Size     = UDim2.new(1,-24,0,36)
-	fpsInfoCard.Position = UDim2.new(0,12,0,352)
+	fpsInfoCard.Position = UDim2.new(0,12,0,348)
 	corner(fpsInfoCard, 8)
 	stroke(fpsInfoCard, C.green, 1)
 
@@ -1860,7 +1929,7 @@ do
 
 	local fpsTogRow = mkFrame(featureScroll, C.card, 3)
 	fpsTogRow.Size     = UDim2.new(1,-24,0,38)
-	fpsTogRow.Position = UDim2.new(0,12,0,394)
+	fpsTogRow.Position = UDim2.new(0,12,0,390)
 	corner(fpsTogRow, 8)
 	stroke(fpsTogRow, C.green, 1.5)
 
@@ -1897,7 +1966,7 @@ do
 		end
 	end)
 
-	local applyFpsW, applyFpsB = actionBtn(featureScroll, 438, "🗑  Hapus Visual Sekarang (Sekali)", C.greenD, C.txt)
+	local applyFpsW, applyFpsB = actionBtn(featureScroll, 434, "🗑  Hapus Visual Sekarang (Sekali)", C.greenD, C.txt)
 	applyFpsB.MouseButton1Click:Connect(function()
 		removeVisualNoise()
 		setStatus("✅ Visual noise dihapus!", C.green)
@@ -2055,7 +2124,6 @@ do
 
 	Players.PlayerRemoving:Connect(clearESP)
 
-	-- ESP GUI
 	secHdr(espPage, 8, "ESP PLAYER")
 
 	local espRow = mkFrame(espPage, C.card, 3)
@@ -2290,4 +2358,4 @@ player.CharacterAdded:Connect(function(char)
 	antiRkCooldown = false
 end)
 
-print("[PatStore v9 Fixed] Loaded! Register overflow fixed + Auto Beli qty fixed.")
+print("[PatStore v9 Fixed] Loaded! Slider diganti tombol +/-.")
